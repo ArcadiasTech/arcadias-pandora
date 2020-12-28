@@ -1,9 +1,24 @@
 import _ from "lodash";
 import jp from "jsonpath";
+import * as yup from "yup";
+
+type ValidationBehavior = "onModify" | "onDemand";
+
+type ResourceOptions<T extends object, C> = {
+  validator: yup.ObjectSchema<T, C>;
+  validationBehavior?: ValidationBehavior;
+};
 
 export class Resource<R> {
+  public static createNew<T extends object, C>(options: ResourceOptions<T, C>) {
+    return new Resource<yup.InferType<typeof options.validator>>(options);
+  }
+
+  private _validator: yup.ObjectSchema;
+  private _validationBehavior: ValidationBehavior;
   private _fetched: boolean;
   private _pending: boolean;
+  private _errors: object;
   private _touchedFields: Set<string>;
   private _dirtyFields: Set<string>;
 
@@ -26,6 +41,10 @@ export class Resource<R> {
     return this._dirtyFields;
   }
 
+  public get errors(): Readonly<object> {
+    return this._errors;
+  }
+
   public get touched(): boolean {
     return this._touchedFields.size != 0;
   }
@@ -42,10 +61,13 @@ export class Resource<R> {
     return this._pending;
   }
 
-  public constructor() {
+  private constructor(options: ResourceOptions<any, any>) {
     this._fetched = false;
     this._touchedFields = new Set();
     this._dirtyFields = new Set();
+    this._validator = options.validator;
+    this._validationBehavior = options.validationBehavior || "onModify";
+    this._errors = {};
   }
 
   public beginFetching() {
@@ -70,9 +92,39 @@ export class Resource<R> {
     }
   }
 
-  public modifyLocalField(jsonPath: string, newValue: any) {
+  public async validate() {
+    if (!this._validator) return;
+    try {
+      this._errors = {};
+      await this._validator.validate(this._localResource, {
+        abortEarly: false,
+      });
+      return true;
+    } catch (error) {
+      if (error instanceof yup.ValidationError) {
+        error.inner.forEach((e) => {
+          jp.value(this._errors, `$.${e.path}`, e.message);
+        });
+        return false;
+      }
+    }
+  }
+
+  public reset() {
+    this._localResource = _.cloneDeep(this._remoteResource);
+    this._touchedFields.clear();
+    this._dirtyFields.clear();
+    this._errors = {};
+  }
+
+  public async modifyLocalField(jsonPath: string, newValue: any) {
     this._touchedFields.add(jsonPath);
     jp.value(this._localResource, jsonPath, newValue);
     this.dirtyCheck(jsonPath);
+    if (this._validationBehavior === "onModify") await this.validate();
+  }
+
+  public onRemoteModified(jsonPath: string, newValue: any) {
+    // TODO
   }
 }

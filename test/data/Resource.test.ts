@@ -1,4 +1,5 @@
 import { Resource } from "../../src/data/Resource";
+import * as yup from "yup";
 
 type ResourceData = {
   name: string;
@@ -12,7 +13,27 @@ type ResourceData = {
   inventory: { item: string; quantity: number }[];
 };
 
-const resource = new Resource<ResourceData>();
+const validator = yup.object().shape({
+  name: yup.string().optional(),
+  surname: yup.string().optional(),
+  age: yup.number().optional().integer(),
+  attrs: yup.object().shape({
+    max_health: yup.number().optional(),
+    min_damage: yup.number().optional(),
+    max_damage: yup.number().optional(),
+  }),
+  inventory: yup.array().of(
+    yup.object().shape({
+      item: yup.string().required(),
+      quantity: yup.number().required().integer(),
+    })
+  ),
+});
+
+const resource = Resource.createNew({
+  validator,
+  validationBehavior: "onModify",
+});
 
 resource.beginFetching();
 
@@ -38,11 +59,18 @@ console.log("Fetched:", resource.fetched);
 console.log("Remote:", resource.remoteResource);
 console.log("Local:", resource.localResource);
 
-resource.modifyLocalField("name", "Baz");
-resource.modifyLocalField("attrs.min_damage", 5);
-resource.modifyLocalField("attrs.max_damage", 99);
-resource.modifyLocalField("inventory[0]", 5);
-console.log("\nRemote:", resource.remoteResource);
-console.log("Local:", resource.localResource);
-console.log(resource.touchedFields)
-console.log(resource.dirtyFields)
+(async function () {
+  await resource.modifyLocalField("name", "Baz");
+  console.log(resource.errors);
+  await resource.modifyLocalField("attrs.min_damage", 5);
+  console.log(resource.errors);
+  await resource.modifyLocalField("attrs.max_damage", 99);
+  console.log(resource.errors);
+  await resource.modifyLocalField("inventory[0]", 5);
+  console.log(resource.errors);
+
+  console.log("\nRemote:", resource.remoteResource);
+  console.log("Local:", resource.localResource);
+  console.log(resource.touchedFields);
+  console.log(resource.dirtyFields);
+})();
