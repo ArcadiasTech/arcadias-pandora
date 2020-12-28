@@ -1,4 +1,4 @@
-export default interface Serializable<T> {
+export interface Serializable<T> {
   serialize(): T;
   deserialize(target: T): void;
 }

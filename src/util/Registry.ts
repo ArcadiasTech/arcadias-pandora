@@ -5,7 +5,7 @@ export interface IRegistry<R> {
   getOrDefault(resourceName: string, defaultValue: R): R;
 }
 
-export default class Registry<R> implements IRegistry<R> {
+export class Registry<R> implements IRegistry<R> {
   private storage: Map<string, R>;
 
   constructor() {
