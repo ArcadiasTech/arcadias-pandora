@@ -1,0 +1,15 @@
+{
+  "name": "arcadias-pandora",
+  "version": "0.0.1",
+  "description": "Arcadia's Pandora is a toolbox for Arcadian developers.",
+  "main": "dist/index.ts",
+  "types": "dist/index.d.ts",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "author": "Taha Anılcan Metinyurt",
+  "license": "MIT",
+  "devDependencies": {
+    "ts-node": "9.0.0"
+  }
+}
