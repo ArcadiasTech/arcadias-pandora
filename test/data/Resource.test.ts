@@ -1,16 +1,16 @@
 import { Resource } from "../../src/data/Resource";
 import * as yup from "yup";
 
-type ResourceData = {
-  name: string;
-  surname: string;
-  age: number;
+const remoteData = {
+  name: "Foo",
+  surname: "Bar",
+  age: 99,
   attrs: {
-    max_health: number;
-    min_damage: number;
-    max_damage: number;
-  };
-  inventory: { item: string; quantity: number }[];
+    max_health: 99,
+    min_damage: 0,
+    max_damage: 99,
+  },
+  inventory: [],
 };
 
 const validator = yup.object().shape({
@@ -35,42 +35,34 @@ const resource = Resource.createNew({
   validationBehavior: "onModify",
 });
 
-resource.beginFetching();
+test("marks fetch correctly", () => {
+  resource.beginFetching();
 
-console.log("Begin");
-console.log("Pending:", resource.pending);
-console.log("Fetched:", resource.fetched);
+  expect(resource.pending).toBe(true);
+  expect(resource.fetched).toBe(false);
+  resource.endFetching(remoteData);
 
-resource.endFetching({
-  name: "Foo",
-  surname: "Bar",
-  age: 99,
-  attrs: {
-    max_health: 99,
-    min_damage: 0,
-    max_damage: 99,
-  },
-  inventory: [],
+  expect(resource.pending).toBe(false);
+  expect(resource.fetched).toBe(true);
+  expect(resource.remoteResource).toBe(remoteData);
+  expect(resource.remoteResource).toBe(resource.localResource);
 });
 
-console.log("\nFetched");
-console.log("Pending:", resource.pending);
-console.log("Fetched:", resource.fetched);
-console.log("Remote:", resource.remoteResource);
-console.log("Local:", resource.localResource);
-
-(async function () {
+test("updates local resource correctly", async () => {
   await resource.modifyLocalField("name", "Baz");
-  console.log(resource.errors);
-  await resource.modifyLocalField("attrs.min_damage", 5);
-  console.log(resource.errors);
-  await resource.modifyLocalField("attrs.max_damage", 99);
-  console.log(resource.errors);
-  await resource.modifyLocalField("inventory[0]", 5);
-  console.log(resource.errors);
+  expect(resource.localResource.name).toBe("Baz");
 
-  console.log("\nRemote:", resource.remoteResource);
-  console.log("Local:", resource.localResource);
-  console.log(resource.touchedFields);
-  console.log(resource.dirtyFields);
-})();
+  await resource.modifyLocalField("attrs.min_damage", 5);
+  expect(resource.localResource.attrs.min_damage).toBe(5);
+
+  expect(resource.localResource.inventory.length).toBe(0);
+  const newItem = { item: "Stick", quantity: 1 };
+  await resource.modifyLocalField("inventory[0]", newItem);
+  expect(resource.localResource.inventory[0]).toBe(newItem);
+});
+
+test("updates remote resource correctly", async () => {
+  await resource.onRemoteModified("name", "Baz");
+
+  expect(resource.dirtyFields).not.toContain("name");
+});

@@ -124,7 +124,9 @@ export class Resource<R> {
     if (this._validationBehavior === "onModify") await this.validate();
   }
 
-  public onRemoteModified(jsonPath: string, newValue: any) {
-    // TODO
+  public async onRemoteModified(jsonPath: string, newValue: any) {
+    jp.value(this._remoteResource, jsonPath, newValue);
+    this.dirtyCheck(jsonPath);
+    if (this._validationBehavior === "onModify") await this.validate();
   }
 }
